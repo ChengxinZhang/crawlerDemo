@@ -5,19 +5,19 @@ from lxml.etree import XMLSyntaxError
 from requests.exceptions import ConnectionError
 from pyquery import PyQuery as pq
 from config import *
-
+#设置mongoDB数据库
 client = pymongo.MongoClient(MONGO_URI)
 db = client[MONGO_DB]
 
 base_url = 'http://weixin.sogou.com/weixin?'
-
+#设置header，cookie和user-agent参数为必须
 headers = {
     'Cookie': 'SUID=F6177C7B3220910A000000058E4D679; SUV=1491392122762346; ABTEST=1|1491392129|v1; SNUID=0DED8681FBFEB69230E6BF3DFB2F8D6B; ld=OZllllllll2Yi2balllllV06C77lllllWTZgdkllll9lllllxv7ll5@@@@@@@@@@; LSTMV=189%2C31; LCLKINT=1805; weixinIndexVisited=1; SUIR=0DED8681FBFEB69230E6BF3DFB2F8D6B; JSESSIONID=aaa-BcHIDk9xYdr4odFSv; PHPSESSID=afohijek3ju93ab6l0eqeph902; sct=21; IPLOC=CN; ppinf=5|1491580643|1492790243|dHJ1c3Q6MToxfGNsaWVudGlkOjQ6MjAxN3x1bmlxbmFtZToyNzolRTUlQjQlOTQlRTUlQkElODYlRTYlODklOER8Y3J0OjEwOjE0OTE1ODA2NDN8cmVmbmljazoyNzolRTUlQjQlOTQlRTUlQkElODYlRTYlODklOER8dXNlcmlkOjQ0Om85dDJsdUJfZWVYOGRqSjRKN0xhNlBta0RJODRAd2VpeGluLnNvaHUuY29tfA; pprdig=j7ojfJRegMrYrl96LmzUhNq-RujAWyuXT_H3xZba8nNtaj7NKA5d0ORq-yoqedkBg4USxLzmbUMnIVsCUjFciRnHDPJ6TyNrurEdWT_LvHsQIKkygfLJH-U2MJvhwtHuW09enCEzcDAA_GdjwX6_-_fqTJuv9w9Gsw4rF9xfGf4; sgid=; ppmdig=1491580643000000d6ae8b0ebe76bbd1844c993d1ff47cea',
     'Host': 'weixin.sogou.com',
     'Upgrade-Insecure-Requests': '1',
     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/57.0.2987.133 Safari/537.36'
 }
-
+#设置ip代理池
 proxy = None
 
 
@@ -29,7 +29,7 @@ def get_proxy():
         return None
     except ConnectionError:
         return None
-
+#获取微信页面信息
 def get_html(url, count=1):
     print('Crawling', url)
     print('Trying Count', count)
@@ -37,6 +37,7 @@ def get_html(url, count=1):
     if count >= MAX_COUNT:
         print('Tried Too Many Counts')
         return None
+#设置代理ip
     try:
         if proxy:
             proxies = {
@@ -64,7 +65,7 @@ def get_html(url, count=1):
         return get_html(url, count)
 
 
-
+#拼接爬取页面
 def get_index(keyword, page):
     data = {
         'query': keyword,
@@ -75,13 +76,13 @@ def get_index(keyword, page):
     url = base_url + queries
     html = get_html(url)
     return html
-
+#解析页面获取页面微信文章的连接
 def parse_index(html):
     doc = pq(html)
     items = doc('.news-box .news-list li .txt-box h3 a').items()
     for item in items:
         yield item.attr('href')
-
+#抓取微信文章内容
 def get_detail(url):
     try:
         response = requests.get(url)
@@ -90,7 +91,7 @@ def get_detail(url):
         return None
     except ConnectionError:
         return None
-
+#解析微信文章内容获取title、content、date、nickname、wechat等内容
 def parse_detail(html):
     try:
         doc = pq(html)
@@ -108,7 +109,7 @@ def parse_detail(html):
         }
     except XMLSyntaxError:
         return None
-
+#保存到mongoDB中
 def save_to_mongo(data):
     if db['articles'].update({'title': data['title']}, {'$set': data}, True):
         print('Saved to Mongo', data['title'])
